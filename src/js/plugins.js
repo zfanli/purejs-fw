@@ -37,7 +37,97 @@
    *                        Widget Registration                               *
    ****************************************************************************/
 
+  $.wrapper = function (name, base) {
+    this.widget(name, base);
+  };
+
   $.wrapper.widget = function (name, base) {
+    if (name in $.fn) {
+      throw new Error("Plugin '" + name + "' already exists.");
+    }
+    var props,
+      specs = {},
+      key,
+      _create,
+      _setOptions;
+
+    function empty() {}
+    function alwaysTrue() {
+      return true;
+    }
+
+    if ("props" in base) {
+      props = base.props;
+
+      Object.keys(props).forEach(function (key) {
+        var spec = $.extend({}, props[key]),
+          _validate = spec.validate || alwaysTrue;
+
+        if (isType(_validate, "string")) {
+          // Literal type.
+          spec.validate = function (val) {
+            return isType(val, _validate);
+          };
+        } else if (isType(_validate, "array")) {
+          // A list of literal values.
+          spec.validate = function (val) {
+            return _validate.indexOf(val) > -1;
+          };
+        } else if (isType(_validate, "function")) {
+          // Validation function.
+          spec.validate = _validate;
+        } else {
+          // Not supported value.
+          throw new TypeError(
+            "Invalid validate definition for plugin '" + name + "': " + spec
+          );
+        }
+
+        specs[key] = spec;
+      });
+
+      if ("_create" in base) {
+        _create = base._create;
+        base._create = function () {
+          var options = this.options,
+            missing = [],
+            failed = {},
+            value,
+            msgs;
+
+          for (key in specs) {
+            value = options[key];
+
+            if (value === undefined && !specs[key].optional) {
+              // Missing key if undefined and not set as optional.
+              missing.push(key);
+            }
+
+            if (value !== undefined && !specs[key].validate(value)) {
+              // Invalid value.
+              failed[key] = value;
+            }
+          }
+
+          if (missing.length > 0 || Object.keys(failed).length > 0) {
+            msgs = ["Validation failed for plugin '" + name + "'."];
+
+            if (missing.length > 0) {
+              msgs.push("Missing keys: " + missing.join(", "));
+            }
+
+            if (Object.keys(failed).length > 0) {
+              msgs.push("Invalid values: ", JSON.stringify(failed));
+            }
+
+            throw new TypeError(msgs.join("\n"));
+          }
+
+          return _create.apply(this, arguments);
+        };
+      }
+    }
+
     // TODO type check
     $.widget(name, base);
   };
@@ -64,6 +154,12 @@
    * @returns test result
    */
   function isType(obj, type) {
-    return typeof obj === type;
+    switch (type) {
+      case "list":
+      case "array":
+        return Array.isArray(obj);
+      default:
+        return typeof obj === type;
+    }
   }
 });
