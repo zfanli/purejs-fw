@@ -42,9 +42,18 @@
   };
 
   $.wrapper.widget = function (name, base) {
+    var package = "custom",
+      defineName = name.split(".");
+
+    if (defineName.length > 1) {
+      package = defineName[0];
+      name = defineName[1];
+    }
+
     if (name in $.fn) {
       throw new Error("Plugin '" + name + "' already exists.");
     }
+
     var props,
       specs = {},
       key,
@@ -126,10 +135,37 @@
           return _create.apply(this, arguments);
         };
       }
+
+      if ("_setOptions" in base) {
+        _setOptions = base._setOptions;
+        base._setOptions = function (options) {
+          var value, msg;
+          for (key in options) {
+            if (key in spec) {
+              value = options[key];
+              if (!specs[key].validate(value)) {
+                if (msg === undefined) {
+                  msg = [
+                    "Validation failed for plugin '" + name + "'.",
+                    "Invalid values: ",
+                  ];
+                }
+                msg.push(key + ":" + value);
+              }
+            }
+          }
+
+          if (msg !== undefined) {
+            throw new TypeError(msgs.join("\n"));
+          }
+
+          return _setOptions.apply(this, arguments);
+        };
+      }
     }
 
     // TODO type check
-    $.widget(name, base);
+    $.widget(package + "." + name, base);
   };
 
   /****************************************************************************
