@@ -12,7 +12,7 @@
   // passed to the plugin as `props`.
   // * Think `props` as settings to plugins.
   $(function () {
-    $.enableAutoBinding();
+    !window.__prevent_auto_binding && $.enableAutoBinding();
   });
 })(function ($, logger) {
   /****************************************************************************
@@ -42,11 +42,11 @@
   };
 
   $.wrapper.widget = function (name, base) {
-    var package = "custom",
+    var packaging = "custom",
       defineName = name.split(".");
 
     if (defineName.length > 1) {
-      package = defineName[0];
+      packaging = defineName[0];
       name = defineName[1];
     }
 
@@ -165,7 +165,7 @@
     }
 
     // TODO type check
-    $.widget(package + "." + name, base);
+    $.widget(packaging + "." + name, base);
   };
 
   /****************************************************************************
