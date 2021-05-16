@@ -44,3 +44,4 @@
 ## License
 
 - jQuery, jQuery UI -> MIT
+- DataTables -> MIT
